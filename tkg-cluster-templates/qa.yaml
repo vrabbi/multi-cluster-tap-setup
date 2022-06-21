@@ -1,0 +1,59 @@
+#@ load("@ytt:data","data")
+---
+#! SETTINGS TO CHANGE
+#! CLUSTER SETTINGS
+CLUSTER_NAME: #@ data.values.clusters.qa_cluster.k8s_info.name
+CLUSTER_PLAN: dev
+ENABLE_AUTOSCALER: true
+
+#! CONTROL PLANE SETTINGS
+VSPHERE_CONTROL_PLANE_DISK_GIB: "40"
+VSPHERE_CONTROL_PLANE_MEM_MIB: "8192"
+VSPHERE_CONTROL_PLANE_NUM_CPUS: "4"
+CONTROL_PLANE_MACHINE_COUNT: 3
+
+#! WINDOWS NODES SETTINGS
+WORKER_MACHINE_COUNT: 3
+VSPHERE_WORKER_DISK_GIB: 40
+VSPHERE_WORKER_MEM_MIB: 8192
+VSPHERE_WORKER_NUM_CPUS: 4
+AUTOSCALER_MIN_SIZE_0: 3
+AUTOSCALER_MAX_SIZE_0: 10
+
+#! NETWORKING SETTINGS
+AVI_CONTROL_PLANE_HA_PROVIDER: #@ data.values.tkg.aviLoadBalancerProvider
+
+#! VSPHERE SETTINGS
+VSPHERE_DATACENTER: #@ data.values.tkg.vsphere.dc
+VSPHERE_DATASTORE: #@ data.values.tkg.vsphere.datastore
+VSPHERE_FOLDER: #@ data.values.tkg.vsphere.folder
+VSPHERE_NETWORK: #@ data.values.tkg.vsphere.network
+VSPHERE_PASSWORD: #@ data.values.tkg.vsphere.password
+VSPHERE_RESOURCE_POOL: #@ data.values.tkg.vsphere.resourcePool
+VSPHERE_SERVER: #@ data.values.tkg.vsphere.fqdn
+VSPHERE_SSH_AUTHORIZED_KEY: #@ data.values.tkg.sshKey
+VSPHERE_TLS_THUMBPRINT: #@ data.values.tkg.vsphere.tls_thumbprint
+VSPHERE_USERNAME: #@ data.values.tkg.vsphere.user
+
+#! DONT CHANGE
+
+#! CLUSTER SETTINGS
+ENABLE_MHC: "true"
+ENABLE_AUDIT_LOGGING: "true"
+ENABLE_CEIP_PARTICIPATION: "false"
+#@ if data.values.tkg.idp_type == "oidc":
+IDENTITY_MANAGEMENT_TYPE: oidc
+#@ end
+#@ if data.values.tkg.idp_type == "ldap":
+IDENTITY_MANAGEMENT_TYPE: ldap
+#@ end
+
+#! NETWORKING SETTINGS
+CLUSTER_CIDR: 100.96.0.0/11
+SERVICE_CIDR: 100.64.0.0/13
+TKG_HTTP_PROXY_ENABLED: "false"
+TKG_IP_FAMILY: ipv4
+
+#! VSPHERE SETTINGS
+INFRASTRUCTURE_PROVIDER: vsphere
+VSPHERE_INSECURE: #@ data.values.tkg.vsphere.insecure

@@ -1,0 +1,34 @@
+#@ load("@ytt:data","data")
+---
+profile: build
+ceip_policy_disclosed: true
+buildservice:
+  kp_default_repository: #@ "{}/{}/build-service".format(data.values.harbor.fqdn, data.values.harbor.system_project)
+  kp_default_repository_username: #@ data.values.harbor.user
+  kp_default_repository_password: #@ data.values.harbor.password
+  tanzunet_username: #@ data.values.tanzunet.user
+  tanzunet_password: #@ data.values.tanzunet.password
+  descriptor_name: #@ data.values.clusters.build_cluster.buildService.descriptor
+  enable_automatic_dependency_updates: #@ data.values.clusters.build_cluster.buildService.dependency_updater
+supply_chain: testing_scanning
+
+scanning:
+  metadataStore:
+    url: #@ "https://metadata-store.{}".format(data.values.clusters.view_cluster.ingressDomain)
+    caSecret:
+      name: store-ca-cert
+      importFromNamespace: metadata-store-secrets
+    authSecret:
+      name: store-auth-token
+      importFromNamespace: metadata-store-secrets
+
+ootb_supply_chain_testing_scanning:
+  registry:
+    server: #@ data.values.harbor.fqdn
+    repository: #@ data.values.harbor.system_project
+  gitops:
+    ssh_secret: ""
+    
+grype:
+  targetImagePullSecret: "tap-registry"
+

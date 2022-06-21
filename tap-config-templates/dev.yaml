@@ -1,0 +1,23 @@
+#@ load("@ytt:data","data")
+---
+#@ if data.values.clusters.dev_cluster.enabled:
+profile: run
+ceip_policy_disclosed: True
+supply_chain: testing_scanning
+
+cnrs:
+  domain_name: #@ data.values.clusters.dev_cluster.ingressDomain
+  domain_template: "{{.Name}}-{{.Namespace}}.{{.Domain}}"
+  default_tls_secret: "kube-system/wildcard"
+
+contour:
+  envoy:
+    service:
+      type: #@ data.values.contour.serviceType
+#@ if data.values.clusters.view_cluster.enabled:
+appliveview_connector:
+  backend:
+    sslDisabled: "true"
+    host: #@ "appliveview.{}".format(data.values.clusters.view_cluster.ingressDomain)
+#@ end
+#@ end

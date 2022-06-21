@@ -1,0 +1,63 @@
+#@data/values
+---
+tls:
+  certData: #!  Base64 Cert data for wildcard cert that covers all clusters
+  keyData: #! Base64 Key data for wildcard cert that covers all clusters
+version: 1.1.1
+tanzunet:
+  user: #! email for Tanzu Netwrok
+  password: #! Tanzu Network Password
+harbor:
+  user: "admin" #! Local Harbor User
+  password: "VMware1!" #! Local Harbor Password
+  fqdn: "harbor.example.com" #! Local Harbor FQDN
+  system_project: "tap" #! Project for all TAP and TBS Packages
+contour:
+  serviceType: LoadBalancer #! Only LoadBalancer is currently Supported
+tkg:
+  aviLoadBalancerProvider: true #! Must be set currently to true
+  vsphere:
+    dc: "/Demo-Datacenter"
+    datastore: "/Demo-Datacenter/datastore/vsanDatastore"
+    folder: "/Demo-Datacenter/vm/Tanzu/TAP/Multi-Cluster"
+    password: "Ch@ngeMe!" #! vSphere Username
+    user: "administrator@vsphere.local" #! vSphere Password
+    resourcePool: "/Demo-Datacenter/host/Demo-Cluster/Resources"
+    fqdn: "demo-vc-01.example.com"
+    tls_thumbprint: "26:3A:FF:3E:01:84:36:F5:BC:18:80:27:0E:14:59:AB:8E:1B:9E:53" #! Muist be set to the correct thumbprint
+    network: "/Demo-Datacenter/network/tap-demo-workload-net"
+    insecure: "true"
+  sshKey: "" #! SSH Public Key for TKG node connection
+  idp_type: oidc #! ldap, oidc or none
+supply_chain: testing_scanning #! Currently only testing_scanning is supported
+clusters:
+  view_cluster:
+    enabled: true #! Currently must be true
+    ingressDomain: tap.example.com #! Set to the ingress Domain for View Cluster components
+    k8s_info:
+      name: demo-view #! name of the TKG cluster to create
+    tap_gui:
+      catalogUrl: https://github.com/vrabbi/tap-gui-beta-3/blob/master/yelb-catalog/catalog-info.yaml
+      authSettings: {} #! when empty only Guest auth is enabled. can be changed later
+  build_cluster:
+    enabled: true #! Currently must be true
+    k8s_info:
+      name: demo-build #! name of the TKG cluster to create
+    buildService:
+      descriptor: full
+      dependency_updater: true #! Currently must be true
+  dev_cluster:
+    enabled: true #! Currently must be true
+    ingressDomain: dev.vrabbi.cloud  #! Set to the ingress Domain for dev ingress objects
+    k8s_info:
+      name: demo-dev #! name of the TKG cluster to create
+  qa_cluster:
+    enabled: true #! Currently must be true
+    ingressDomain: qa.example.com  #! Set to the ingress Domain for qa ingress objects
+    k8s_info:
+      name: demo-qa #! name of the TKG cluster to create
+  prod_cluster:
+    enabled: true #! Currently must be true
+    ingressDomain: prod.example.com #! Set to the ingress Domain for prod ingress objects
+    k8s_info:
+      name: demo-prod #! name of the TKG cluster to create

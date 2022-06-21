@@ -1,0 +1,77 @@
+#@ load("@ytt:data","data")
+---
+profile: view
+ceip_policy_disclosed: true
+
+contour:
+  envoy:
+    service:
+      type: #@ data.values.contour.serviceType
+
+learningcenter:
+  ingressDomain: #@ data.values.clusters.view_cluster.ingressDomain
+
+tap_gui:
+  tls:
+    secretName: wildcard
+    namespace: kube-system
+  service_type: ClusterIP
+  ingressEnabled: "true"
+  ingressDomain: #@ data.values.clusters.view_cluster.ingressDomain
+  app_config:
+    #@ if data.values.clusters.view_cluster.tap_gui.authSettings:
+    auth: #@ data.values.clusters.view_cluster.tap_gui.authSettings
+    #@ end
+    app:
+      baseUrl: #@ "https://tap-gui.{}".format(data.values.clusters.view_cluster.ingressDomain)
+    catalog:
+      locations:
+        - type: url
+          target: #@ data.values.clusters.view_cluster.tap_gui.catalogUrl
+    backend:
+      baseUrl: #@ "https://tap-gui.{}".format(data.values.clusters.view_cluster.ingressDomain)
+      cors:
+        origin: #@ "https://tap-gui.{}".format(data.values.clusters.view_cluster.ingressDomain)
+    kubernetes:
+      serviceLocatorMethod:
+        type: 'multiTenant'
+      clusterLocatorMethods:
+      - type: 'config'
+        clusters:
+          #@ if data.values.clusters.build_cluster.enabled:
+          - url: #@ data.values.clusters.build_cluster.k8s_info.url
+            name: #@ data.values.clusters.build_cluster.k8s_info.name
+            authProvider: serviceAccount
+            serviceAccountToken: #@ data.values.clusters.build_cluster.k8s_info.saToken
+            skipTLSVerify: true
+          #@ end
+          #@ if data.values.clusters.dev_cluster.enabled:
+          - url: #@ data.values.clusters.dev_cluster.k8s_info.url
+            name: #@ data.values.clusters.dev_cluster.k8s_info.name
+            authProvider: serviceAccount
+            skipTLSVerify: true
+            serviceAccountToken: #@ data.values.clusters.dev_cluster.k8s_info.saToken
+          #@ end
+          #@ if data.values.clusters.qa_cluster.enabled:
+          - url: #@ data.values.clusters.qa_cluster.k8s_info.url
+            name: #@ data.values.clusters.qa_cluster.k8s_info.name
+            authProvider: serviceAccount
+            skipTLSVerify: true
+            serviceAccountToken: #@ data.values.clusters.qa_cluster.k8s_info.saToken
+          #@ end
+          #@ if data.values.clusters.prod_cluster.enabled:
+          - url: #@ data.values.clusters.prod_cluster.k8s_info.url
+            name: #@ data.values.clusters.prod_cluster.k8s_info.name
+            authProvider: serviceAccount
+            skipTLSVerify: true
+            serviceAccountToken: #@ data.values.clusters.prod_cluster.k8s_info.saToken
+          #@ end
+
+metadata_store:
+  app_service_type: ClusterIP
+  ingress_enabled: "true"
+  ingress_domain: #@ data.values.clusters.view_cluster.ingressDomain
+
+appliveview:
+  ingressEnabled: true
+  ingressDomain: #@ data.values.clusters.view_cluster.ingressDomain
