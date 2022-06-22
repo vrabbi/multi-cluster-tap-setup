@@ -1,5 +1,6 @@
 #!/bin/bash
 start=`date +%s`
+cp values.yaml values.yaml.original
 echo "##################################################"
 echo "##################################################"
 echo "################# Create Folders #################"
@@ -96,16 +97,59 @@ tanzu cluster kubeconfig get --admin $BUILD_CLS_NAME 1>/dev/null 2>/dev/null
 tanzu cluster kubeconfig get --admin $DEV_CLS_NAME 1>/dev/null 2>/dev/null
 tanzu cluster kubeconfig get --admin $QA_CLS_NAME 1>/dev/null 2>/dev/null
 tanzu cluster kubeconfig get --admin $PROD_CLS_NAME 1>/dev/null 2>/dev/null
-echo ""
-echo "##################################################"
-echo "##################################################"
-echo "################ Get Cert Details ################"
-echo "##################################################"
-echo "##################################################"
-echo ""
-cat values.yaml | yq .tls.certData | base64 --decode > wildcard.cer
-cat values.yaml | yq .tls.keyData | base64 --decode > wildcard.key
-echo "Cert files have been built based on values.yaml config"
+
+generate_cert=`cat values.yaml | yq .tls.generate`
+if [[ "$generate_cert" == "true" ]]; then
+  echo ""
+  echo "##################################################"
+  echo "##################################################"
+  echo "####### Generate Self Signed Wildcard Cert #######"
+  echo "##################################################"
+  echo "##################################################"
+  echo ""
+  VIEW_CLS_ING_DOMAIN=`cat values.yaml | yq .clusters.view_cluster.ingressDomain`
+  DEV_CLS_ING_DOMAIN=`cat values.yaml | yq .clusters.dev_cluster.ingressDomain`
+  QA_CLS_ING_DOMAIN=`cat values.yaml | yq .clusters.qa_cluster.ingressDomain`
+  PROD_CLS_ING_DOMAIN=`cat values.yaml | yq .clusters.prod_cluster.ingressDomain`
+  cat <<EOF > req.cnf
+[req]
+distinguished_name = req_distinguished_name
+x509_extensions = v3_req
+prompt = no
+[req_distinguished_name]
+C = IL
+ST = IL
+O = vRabbi
+localityName = Jerusalem
+commonName = *.$VIEW_CLS_ING_DOMAIN
+organizationalUnitName = Lab
+emailAddress = john.doe@example.com
+[v3_req]
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+[alt_names]
+DNS.1   = *.$VIEW_CLS_ING_DOMAIN
+DNS.2   = *.$DEV_CLS_ING_DOMAIN
+DNS.3   = *.$QA_CLS_ING_DOMAIN
+DNS.4   = *.$PROD_CLS_ING_DOMAIN
+EOF
+  openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout "wildcard.key" -config req.cnf -out "wildcard.cer" -sha256
+  rm req.cnf
+  yq -i '.tls.certData = "' `cat wildcard.cer | base64 -w 0` '"' values.yaml
+  yq -i '.tls.keyData = "' `cat wildcard.key | base64 -w 0` '"' values.yaml
+else
+  echo ""
+  echo "##################################################"
+  echo "##################################################"
+  echo "################ Get Cert Details ################"
+  echo "##################################################"
+  echo "##################################################"
+  echo ""
+  cat values.yaml | yq .tls.certData | base64 --decode > wildcard.cer
+  cat values.yaml | yq .tls.keyData | base64 --decode > wildcard.key
+  echo "Cert files have been built based on values.yaml config"
+fi
 echo ""
 echo "##################################################"
 echo "##################################################"
@@ -182,7 +226,6 @@ echo "############### Update Values File ###############"
 echo "##################################################"
 echo "##################################################"
 echo ""
-cp values.yaml values.yaml.original
 yq -i '.clusters.view_cluster.k8s_info.url = "'$VIEW_CLS_ENDPOINT'"' values.yaml
 yq -i '.clusters.build_cluster.k8s_info.url = "'$BUILD_CLS_ENDPOINT'"' values.yaml
 yq -i '.clusters.dev_cluster.k8s_info.url = "'$DEV_CLS_ENDPOINT'"' values.yaml
@@ -514,103 +557,16 @@ echo "### Prepare Default NS for TAP in All Clusters ###"
 echo "##################################################"
 echo "##################################################"
 echo ""
-tanzu secret registry add registry-credentials --server "$HARBOR_REGISTRY" --username "$HARBOR_USER}" --password "$HARBOR_PASSWORD}" --namespace default --kubeconfig tkg-kubeconfigs/build.kubeconfig
-tanzu secret registry add registry-credentials --server "$HARBOR_REGISTRY" --username "$HARBOR_USER}" --password "$HARBOR_PASSWORD}" --namespace default --kubeconfig tkg-kubeconfigs/dev.kubeconfig
-tanzu secret registry add registry-credentials --server "$HARBOR_REGISTRY" --username "$HARBOR_USER}" --password "$HARBOR_PASSWORD}" --namespace default --kubeconfig tkg-kubeconfigs/qa.kubeconfig
-tanzu secret registry add registry-credentials --server "$HARBOR_REGISTRY" --username "$HARBOR_USER}" --password "$HARBOR_PASSWORD}" --namespace default --kubeconfig tkg-kubeconfigs/prod.kubeconfig
+tanzu secret registry add registry-credentials --server "$HARBOR_REGISTRY" --username "$HARBOR_USER" --password "$HARBOR_PASSWORD" --namespace default --kubeconfig tkg-kubeconfigs/build.kubeconfig
+tanzu secret registry add registry-credentials --server "$HARBOR_REGISTRY" --username "$HARBOR_USER" --password "$HARBOR_PASSWORD" --namespace default --kubeconfig tkg-kubeconfigs/dev.kubeconfig
+tanzu secret registry add registry-credentials --server "$HARBOR_REGISTRY" --username "$HARBOR_USER" --password "$HARBOR_PASSWORD" --namespace default --kubeconfig tkg-kubeconfigs/qa.kubeconfig
+tanzu secret registry add registry-credentials --server "$HARBOR_REGISTRY" --username "$HARBOR_USER" --password "$HARBOR_PASSWORD" --namespace default --kubeconfig tkg-kubeconfigs/prod.kubeconfig
 
-cat <<EOF > dev-ns-prep.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: tap-registry
-  annotations:
-    secretgen.carvel.dev/image-pull-secret: ""
-type: kubernetes.io/dockerconfigjson
-data:
-  .dockerconfigjson: e30K
+kubectl apply -f dev-ns-prep-files/ --kubeconfig tkg-kubeconfigs/build.kubeconfig -n default
+kubectl apply -f dev-ns-prep-files/rbac.yaml --kubeconfig tkg-kubeconfigs/dev.kubeconfig -n default
+kubectl apply -f dev-ns-prep-files/rbac.yaml --kubeconfig tkg-kubeconfigs/qa.kubeconfig -n default
+kubectl apply -f dev-ns-prep-files/rbac.yaml --kubeconfig tkg-kubeconfigs/prod.kubeconfig -n default
 
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: default
-secrets:
-  - name: registry-credentials
-imagePullSecrets:
-  - name: registry-credentials
-  - name: tap-registry
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: default
-rules:
-- apiGroups: [source.toolkit.fluxcd.io]
-  resources: [gitrepositories]
-  verbs: ['*']
-- apiGroups: [source.apps.tanzu.vmware.com]
-  resources: [imagerepositories]
-  verbs: ['*']
-- apiGroups: [carto.run]
-  resources: [deliverables, runnables]
-  verbs: ['*']
-- apiGroups: [kpack.io]
-  resources: [images]
-  verbs: ['*']
-- apiGroups: [conventions.apps.tanzu.vmware.com]
-  resources: [podintents]
-  verbs: ['*']
-- apiGroups: [""]
-  resources: ['configmaps']
-  verbs: ['*']
-- apiGroups: [""]
-  resources: ['pods']
-  verbs: ['list']
-- apiGroups: [tekton.dev]
-  resources: [taskruns, pipelineruns]
-  verbs: ['*']
-- apiGroups: [tekton.dev]
-  resources: [pipelines]
-  verbs: ['list']
-- apiGroups: [kappctrl.k14s.io]
-  resources: [apps]
-  verbs: ['*']
-- apiGroups: [serving.knative.dev]
-  resources: ['services']
-  verbs: ['*']
-- apiGroups: [servicebinding.io]
-  resources: ['servicebindings']
-  verbs: ['*']
-- apiGroups: [services.apps.tanzu.vmware.com]
-  resources: ['resourceclaims']
-  verbs: ['*']
-- apiGroups: [scanning.apps.tanzu.vmware.com]
-  resources: ['imagescans', 'sourcescans']
-  verbs: ['*']
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: default
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: default
-subjects:
-  - kind: ServiceAccount
-    name: default
-
-EOF
-
-kubectl apply -f dev-ns-prep.yaml --kubeconfig tkg-kubeconfigs/build.kubeconfig -n default
-kubectl apply -f dev-ns-prep.yaml --kubeconfig tkg-kubeconfigs/dev.kubeconfig -n default
-kubectl apply -f dev-ns-prep.yaml --kubeconfig tkg-kubeconfigs/qa.kubeconfig -n default
-kubectl apply -f dev-ns-prep.yaml --kubeconfig tkg-kubeconfigs/prod.kubeconfig -n default
-
-mv dev-ns-prep.yaml helper-files/
 echo ""
 echo "##################################################"
 echo "##################################################"
