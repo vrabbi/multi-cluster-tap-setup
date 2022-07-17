@@ -20,4 +20,7 @@ appliveview_connector:
     sslDisabled: "true"
     host: #@ "appliveview.{}".format(data.values.clusters.view_cluster.ingressDomain)
 #@ end
+shared:
+  ingress_domain: #@ data.values.clusters.dev_cluster.ingressDomain
+  ca_cert_data: #@ data.values.tls.certData
 #@ end

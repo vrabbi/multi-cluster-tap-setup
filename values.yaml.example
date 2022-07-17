@@ -1,9 +1,23 @@
 #@data/values
 ---
+gitops:
+  enabled: false #! if you want to enable a Gitops flow
+  branch: main #! The Gitops branch to open PRs against automatically from the build cluster
+  repository_name: #! git repo name
+  repository_owner: #! Owner Name of the repo
+  auth:
+    user: #! Username to be used for auth against the Github Repo
+    password: #! Password / Personal Access Token to be used for auth against the Github Repo
+maven:
+  enabled: false #! If you want to setup for supply chains to accept a maven artifact as a source
+  repository_url: #! Full URL to maven repository
+  auth:
+    user: #! Username to be used for basic auth against the Maven Repo
+    password: #! Password to be used for basic auth against the Maven Repo
 tls:
   generate: false #! If you want to have self signed cert generated set to true
-  certData: #!  Base64 Cert data for wildcard cert that covers all clusters ingress domains
-  keyData: #! Base64 Key data for wildcard cert that covers all clusters ingress domains
+  certData: #!  Cert data for wildcard cert that covers all clusters ingress domains
+  keyData: #! Key data for wildcard cert that covers all clusters ingress domains
 version: 1.1.1
 tanzunet:
   user: #! email for Tanzu Netwrok

@@ -7,23 +7,46 @@ contour:
   envoy:
     service:
       type: #@ data.values.contour.serviceType
-
-learningcenter:
-  ingressDomain: #@ data.values.clusters.view_cluster.ingressDomain
-
 tap_gui:
   tls:
     secretName: wildcard
     namespace: kube-system
   service_type: ClusterIP
   ingressEnabled: "true"
-  ingressDomain: #@ data.values.clusters.view_cluster.ingressDomain
   app_config:
+    title: TAP Multi Cluster POC Environment
+    app:
+      baseUrl: #@ "https://tap-gui.{}".format(data.values.clusters.view_cluster.ingressDomain)
+      support:
+        url: https://github.com/vrabbi/local-tap-setup
+        items:
+          - title: Issues
+            icon: github
+            links:
+            - url: https://github.com/vrabbi/multi-cluster-tap-setup/issues
+              title: Github Issues
+          - title: Blog
+            icon: docs
+            links:
+            - url: https://vrabbi.cloud
+              title: vRabbi's Blog
+          - title: Contact Support
+            icon: email
+            links:
+            - url: https://tanzu.vmware.com/support
+              title: Tanzu Support Page
+          - title: Documentation
+            icon: docs
+            links:
+            - url: https://docs.vmware.com/en/VMware-Tanzu-Application-Platform/index.html
+              title: Tanzu Application Platform Documentation
+    organization:
+      name: TAP Multi Cluster POC Environment
+    customize:
+      custom_name: TAP Multi Cluster POC Environment
     #@ if data.values.clusters.view_cluster.tap_gui.authSettings:
     auth: #@ data.values.clusters.view_cluster.tap_gui.authSettings
     #@ end
-    app:
-      baseUrl: #@ "https://tap-gui.{}".format(data.values.clusters.view_cluster.ingressDomain)
     catalog:
       locations:
         - type: url
@@ -32,6 +55,14 @@ tap_gui:
       baseUrl: #@ "https://tap-gui.{}".format(data.values.clusters.view_cluster.ingressDomain)
       cors:
         origin: #@ "https://tap-gui.{}".format(data.values.clusters.view_cluster.ingressDomain)
+      database:
+        client: pg
+        connection:
+          host: tap-gui-db-postgresql.tap-gui-backend.svc.cluster.local
+          port: 5432
+          user: postgres
+          password: VMware1!
+          ssl: false
     kubernetes:
       serviceLocatorMethod:
         type: 'multiTenant'
@@ -70,8 +101,22 @@ tap_gui:
 metadata_store:
   app_service_type: ClusterIP
   ingress_enabled: "true"
-  ingress_domain: #@ data.values.clusters.view_cluster.ingressDomain
-
+accelerator:
+  domain: #@ data.values.clusters.view_cluster.ingressDomain
+  ingress:
+    include: true
+    enable_tls: true
+  tls:
+    secret_name: wildcard
+    namespace: kube-system
 appliveview:
   ingressEnabled: true
-  ingressDomain: #@ data.values.clusters.view_cluster.ingressDomain
+
+shared:
+  ingress_domain: #@ data.values.clusters.view_cluster.ingressDomain
+  ca_cert_data: #@ data.values.tls.certData
+
+package_overlays:
+- name: tap-gui
+  secrets:
+  - name: tap-gui-techdocs-overlay

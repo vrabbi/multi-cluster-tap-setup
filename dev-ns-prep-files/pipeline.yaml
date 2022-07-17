@@ -21,9 +21,26 @@ spec:
           - name: source-revision
         steps:
           - name: test
-            image: gradle
+            image: ghcr.io/vrabbi/gradle
             script: |-
+              #!/bin/bash
               cd `mktemp -d`
-
               wget -qO- $(params.source-url) | tar xvz -m
-              ./mvnw test
+              if test -f "mvnw"; then
+                ./mvnw test
+              elif test -d "META-INF"; then
+                jar cvfm0 test2.jar META-INF/MANIFEST.MF *
+                nohup java -jar test2.jar > /dev/null 2>&1 &
+                serverPID=$!
+                sleep 10
+                status_code=$(curl --write-out %{http_code} --silent --output /dev/null  http://localhost:8080)
+                if [ "$status_code" -eq 200 ]; then
+                  echo "Got 200 response from java app!"
+                else
+                  echo "Failed with Status Code $status_code"
+                  exit 1
+                fi
+                kill $serverPID
+              else
+                echo No tests match this app. continuing on to scan.
+              fi

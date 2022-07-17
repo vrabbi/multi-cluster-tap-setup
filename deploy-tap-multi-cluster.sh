@@ -136,8 +136,8 @@ DNS.4   = *.$PROD_CLS_ING_DOMAIN
 EOF
   openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout "wildcard.key" -config req.cnf -out "wildcard.cer" -sha256
   rm req.cnf
-  yq -i '.tls.certData = "' `cat wildcard.cer | base64 -w 0` '"' values.yaml
-  yq -i '.tls.keyData = "' `cat wildcard.key | base64 -w 0` '"' values.yaml
+  yq -i ".tls.certData = \"`cat wildcard.cer | base64 -w 0`\"" values.yaml
+  yq -i ".tls.keyData = \"`cat wildcard.key | base64 -w 0`\"" values.yaml
 else
   echo ""
   echo "##################################################"
@@ -146,8 +146,8 @@ else
   echo "##################################################"
   echo "##################################################"
   echo ""
-  cat values.yaml | yq .tls.certData | base64 --decode > wildcard.cer
-  cat values.yaml | yq .tls.keyData | base64 --decode > wildcard.key
+  cat values.yaml | yq .tls.certData > wildcard.cer
+  cat values.yaml | yq .tls.keyData > wildcard.key
   echo "Cert files have been built based on values.yaml config"
 fi
 echo ""
@@ -170,6 +170,7 @@ echo "##################################################"
 echo "##################################################"
 echo ""
 kubectl --kubeconfig tkg-kubeconfigs/view.kubeconfig create ns tap-install
+kubectl create secret generic -n tap-install --kubeconfig tkg-kubeconfigs/view.kubeconfig --from-file=backstage-overlay/overlay.yaml tap-gui-techdocs-overlay
 kubectl --kubeconfig tkg-kubeconfigs/build.kubeconfig create ns tap-install
 kubectl --kubeconfig tkg-kubeconfigs/dev.kubeconfig create ns tap-install
 kubectl --kubeconfig tkg-kubeconfigs/qa.kubeconfig create ns tap-install
@@ -252,6 +253,11 @@ echo "##################################################"
 echo ""
 cat << EOF > tap-gui-viewer-service-account-rbac.yaml
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: tap-gui
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   namespace: tap-gui
@@ -276,7 +282,7 @@ metadata:
   name: k8s-reader
 rules:
 - apiGroups: ['']
-  resources: ['pods', 'services', 'configmaps']
+  resources: ['pods', 'pods/log', 'services', 'configmaps']
   verbs: ['get', 'watch', 'list']
 - apiGroups: ['apps']
   resources: ['deployments', 'replicasets']
@@ -322,7 +328,7 @@ rules:
   resources:
   - imagerepositories
   verbs: ['get', 'watch', 'list']
-- apiGroups: ['conventions.apps.tanzu.vmware.com']
+- apiGroups: ['conventions.carto.run']
   resources:
   - podintents
   verbs: ['get', 'watch', 'list']
@@ -409,6 +415,9 @@ echo "########## Install TAP in View Cluster ###########"
 echo "##################################################"
 echo "##################################################"
 echo ""
+helm repo add bitnami https://charts.bitnami.com/bitnami
+kubectl create namespace tap-gui-backend --kubeconfig tkg-kubeconfigs/view.kubeconfig
+helm install tap-gui-db bitnami/postgresql -n tap-gui-backend --set auth.postgresPassword="VMware1!" --set auth.username="tapuser" --set auth.password="VMware1!" --kubeconfig tkg-kubeconfigs/view.kubeconfig
 tanzu package install tap -n tap-install -p tap.tanzu.vmware.com -v $TAP_VERSION -f tap-cluster-configs/view.yaml --kubeconfig tkg-kubeconfigs/view.kubeconfig --wait=false
 until [ -n "$(kubectl get svc -n tanzu-system-ingress envoy --kubeconfig tkg-kubeconfigs/view.kubeconfig -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)" ]; do
     echo "Waiting for Contour to be given an IP"
@@ -445,6 +454,43 @@ echo ""
 CA_CERT=$(kubectl get secret --kubeconfig tkg-kubeconfigs/view.kubeconfig -n metadata-store ingress-cert -o json | jq -r ".data.\"ca.crt\"")
 AUTH_TOKEN=$(kubectl --kubeconfig tkg-kubeconfigs/view.kubeconfig get secrets -n metadata-store -o jsonpath="{.items[?(@.metadata.annotations['kubernetes\.io/service-account\.name']=='metadata-store-read-write-client')].data.token}" | base64 -d)
 echo "Retrieved Auth Token and CA Cert of Metadata store from View Cluster"
+echo ""
+echo "##################################################"
+echo "##################################################"
+echo "##### Update TAP GUI for CVE Scan Visibility #####"
+echo "##################################################"
+echo "##################################################"
+echo ""
+cat << EOF > cve-viewer-tap-gui-rbac.yaml
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: metadata-store-ready-only
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: metadata-store-read-only
+subjects:
+- kind: ServiceAccount
+  name: metadata-store-read-client
+  namespace: metadata-store
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: metadata-store-read-client
+  namespace: metadata-store
+automountServiceAccountToken: false
+EOF
+kubectl apply -f cve-viewer-tap-gui-rbac.yaml --kubeconfig tkg-kubeconfigs/view.kubeconfig
+CVE_VIEW_TOKEN=`kubectl get secret --kubeconfig tkg-kubeconfigs/view.kubeconfig $(kubectl get sa -n metadata-store metadata-store-read-client -o json --kubeconfig tkg-kubeconfigs/view.kubeconfig | jq -r '.secrets[0].name') -n metadata-store -o json | jq -r '.data.token' | base64 -d`
+yq -i '.tap_gui.app_config.proxy./metadata-store.target="https://metadata-store-app.metadata-store:8443/api/v1"' tap-cluster-configs/view.yaml
+yq -i '.tap_gui.app_config.proxy./metadata-store.changeOrigin=true' tap-cluster-configs/view.yaml
+yq -i '.tap_gui.app_config.proxy./metadata-store.secure=false' tap-cluster-configs/view.yaml
+yq -i '.tap_gui.app_config.proxy./metadata-store.headers.X-Custom-Source="project-star"' tap-cluster-configs/view.yaml
+yq -i '.tap_gui.app_config.proxy./metadata-store.headers.Authorization="Bearer '$CVE_VIEW_TOKEN'"' tap-cluster-configs/view.yaml
+tanzu package installed update -n tap-install tap -f tap-cluster-configs/view.yaml --kubeconfig tkg-kubeconfigs/view.kubeconfig --wait=false
 echo ""
 echo "##################################################"
 echo "##################################################"
@@ -528,6 +574,8 @@ spec:
   - secretName: wildcard
     targetNamespaces: ["*"]
 EOF
+{ sed -n /tlscertificatedelegations.projectcontour.io/q; kill $!; } < <(kubectl get crd -w --kubeconfig tkg-kubeconfigs/view.kubeconfig)
+kubectl create -f tls-delegation.yaml --kubeconfig tkg-kubeconfigs/view.kubeconfig
 
 { sed -n /tlscertificatedelegations.projectcontour.io/q; kill $!; } < <(kubectl get crd -w --kubeconfig tkg-kubeconfigs/dev.kubeconfig)
 kubectl create -f tls-delegation.yaml --kubeconfig tkg-kubeconfigs/dev.kubeconfig
@@ -537,6 +585,7 @@ kubectl create -f tls-delegation.yaml --kubeconfig tkg-kubeconfigs/qa.kubeconfig
 	
 { sed -n /tlscertificatedelegations.projectcontour.io/q; kill $!; } < <(kubectl get crd -w --kubeconfig tkg-kubeconfigs/prod.kubeconfig)
 kubectl create -f tls-delegation.yaml --kubeconfig tkg-kubeconfigs/prod.kubeconfig
+
 
 mv tls-delegation.yaml helper-files/
 echo ""
@@ -551,6 +600,7 @@ kubectl wait pkgi --for condition=ReconcileSucceeded=True -n tap-install tap --k
 kubectl wait pkgi --for condition=ReconcileSucceeded=True -n tap-install tap --kubeconfig tkg-kubeconfigs/dev.kubeconfig --timeout=15m
 kubectl wait pkgi --for condition=ReconcileSucceeded=True -n tap-install tap --kubeconfig tkg-kubeconfigs/qa.kubeconfig --timeout=15m
 kubectl wait pkgi --for condition=ReconcileSucceeded=True -n tap-install tap --kubeconfig tkg-kubeconfigs/prod.kubeconfig --timeout=15m
+
 echo "##################################################"
 echo "##################################################"
 echo "### Prepare Default NS for TAP in All Clusters ###"
@@ -566,7 +616,52 @@ kubectl apply -f dev-ns-prep-files/ --kubeconfig tkg-kubeconfigs/build.kubeconfi
 kubectl apply -f dev-ns-prep-files/rbac.yaml --kubeconfig tkg-kubeconfigs/dev.kubeconfig -n default
 kubectl apply -f dev-ns-prep-files/rbac.yaml --kubeconfig tkg-kubeconfigs/qa.kubeconfig -n default
 kubectl apply -f dev-ns-prep-files/rbac.yaml --kubeconfig tkg-kubeconfigs/prod.kubeconfig -n default
-
+if `yq '.maven.enabled' values.yaml` ; then
+  echo "Creating Maven Credential secret in default namespace"
+  cat << EOF > maven-secret-ytt.yaml
+#@ load("@ytt:data", "data")
+#@ load("@ytt:base64", "base64")
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: maven-auth
+type: Opaque
+data:
+  username: #@ base64.encode(data.values.maven.auth.user)
+  password: #@ base64.encode(data.values.maven.auth.password)
+  caFile: ""
+EOF
+  ytt -f values.yaml -f maven-secret-ytt.yaml > maven-secret.yaml
+  kubectl apply -f maven-secret.yaml --kubeconfig tkg-kubeconfigs/build.kubeconfig
+  mv maven-secret-ytt.yaml helper-files/
+  mv maven-secret.yaml dev-ns-prep-files/
+fi
+if `yq '.gitops.enabled' values.yaml` ; then
+  echo "Creating Git Auth Secret in default namespace"
+  cat << EOF > git-secret-ytt.yaml
+#@ load("@ytt:data", "data")
+#@ load("@ytt:base64", "base64")
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: git-auth
+  annotations:
+    tekton.dev/git-0: https://github.com
+type: kubernetes.io/basic-auth
+data:
+  username: #@ base64.encode(data.values.gitops.auth.user)
+  password: #@ base64.encode(data.values.gitops.auth.password)
+EOF
+  ytt -f values.yaml -f git-secret-ytt.yaml > git-secret.yaml
+  kubectl apply -f git-secret.yaml --kubeconfig tkg-kubeconfigs/build.kubeconfig
+  kubectl apply -f git-secret.yaml --kubeconfig tkg-kubeconfigs/dev.kubeconfig
+  kubectl apply -f git-secret.yaml --kubeconfig tkg-kubeconfigs/qa.kubeconfig
+  kubectl apply -f git-secret.yaml --kubeconfig tkg-kubeconfigs/prod.kubeconfig
+  mv git-secret-ytt.yaml helper-files/
+  mv git-secret.yaml dev-ns-prep-files/
+fi
 echo ""
 echo "##################################################"
 echo "##################################################"
