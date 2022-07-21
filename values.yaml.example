@@ -18,7 +18,7 @@ tls:
   generate: false #! If you want to have self signed cert generated set to true
   certData: #!  Cert data for wildcard cert that covers all clusters ingress domains
   keyData: #! Key data for wildcard cert that covers all clusters ingress domains
-version: 1.1.1
+version: 1.2.0
 tanzunet:
   user: #! email for Tanzu Netwrok
   password: #! Tanzu Network Password
