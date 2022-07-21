@@ -54,3 +54,7 @@ grype:
       name: store-auth-token
       importFromNamespace: metadata-store-secrets
 
+package_overlays:
+- name: ootb-templates
+  secrets:
+  - name: pr-flow-overlay

@@ -24,3 +24,8 @@ shared:
   ingress_domain: #@ data.values.clusters.qa_cluster.ingressDomain
   ca_cert_data: #@ data.values.tls.certData
 #@ end
+
+package_overlays:
+- name: cnrs
+  secrets:
+  - name: cnrs-overlay

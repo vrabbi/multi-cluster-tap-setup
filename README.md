@@ -8,6 +8,12 @@ What the script does:
 4. Deploys TAP in a multi cluster deployment
 5. Configures TAP GUI and the Metadata Store for multi cluster support
 6. Prepares the Default namespace in all clusters for TAP workloads
+7. Applies overlays to give better experience with TAP including:
+   * set HTTPS as default scheme for App URLs
+   * Set HTTP to Redirect to HTTPS for App URLs
+   * Set Scale to zero time to 15 minutes
+   * Add Sidecar to TAP GUI to enable auto rendering of TechDocs
+   * Add fix for PR flow bug in TAP 1.2 by changing the name of the PR TaskRun objects
   
 Pre Reqs:
 1. You need the TKGm 1.5.x Tanzu CLI installed with the TAP plugins added as well.

@@ -170,11 +170,15 @@ echo "##################################################"
 echo "##################################################"
 echo ""
 kubectl --kubeconfig tkg-kubeconfigs/view.kubeconfig create ns tap-install
-kubectl create secret generic -n tap-install --kubeconfig tkg-kubeconfigs/view.kubeconfig --from-file=backstage-overlay/overlay.yaml tap-gui-techdocs-overlay
+kubectl create secret generic -n tap-install --kubeconfig tkg-kubeconfigs/view.kubeconfig --from-file=package-overlays/techdocs-overlay.yaml tap-gui-techdocs-overlay
 kubectl --kubeconfig tkg-kubeconfigs/build.kubeconfig create ns tap-install
+kubectl create secret generic -n tap-install --kubeconfig tkg-kubeconfigs/build.kubeconfig --from-file=package-overlays/pr-flow-overlay.yaml pr-flow-overlay
 kubectl --kubeconfig tkg-kubeconfigs/dev.kubeconfig create ns tap-install
+kubectl create secret generic -n tap-install --kubeconfig tkg-kubeconfigs/dev.kubeconfig --from-file=package-overlays/cnrs-overlays.yaml cnrs-overlay
 kubectl --kubeconfig tkg-kubeconfigs/qa.kubeconfig create ns tap-install
+kubectl create secret generic -n tap-install --kubeconfig tkg-kubeconfigs/qa.kubeconfig --from-file=package-overlays/cnrs-overlays.yaml cnrs-overlay
 kubectl --kubeconfig tkg-kubeconfigs/prod.kubeconfig create ns tap-install
+kubectl create secret generic -n tap-install --kubeconfig tkg-kubeconfigs/prod.kubeconfig --from-file=package-overlays/cnrs-overlays.yaml cnrs-overlay
 echo ""
 echo "##################################################"
 echo "##################################################"
