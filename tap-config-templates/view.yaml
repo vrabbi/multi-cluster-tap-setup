@@ -1,4 +1,5 @@
 #@ load("@ytt:data","data")
+#@ load("@ytt:base64","base64")
 ---
 profile: view
 ceip_policy_disclosed: true
@@ -14,7 +15,7 @@ tap_gui:
   service_type: ClusterIP
   ingressEnabled: "true"
   app_config:
-    title: TAP Multi Cluster POC Environment
+    title: TAP Multi Cluster Demo Environment
     app:
       baseUrl: #@ "https://tap-gui.{}".format(data.values.clusters.view_cluster.ingressDomain)
       support:
@@ -41,9 +42,15 @@ tap_gui:
             - url: https://docs.vmware.com/en/VMware-Tanzu-Application-Platform/index.html
               title: Tanzu Application Platform Documentation
     organization:
-      name: TAP Multi Cluster POC Environment
+      name: TAP Multi Cluster Demo Environment
     customize:
-      custom_name: TAP Multi Cluster POC Environment
+      custom_name: TAP Multi Cluster Demo Environment
+    #@ if data.values.clusters.view_cluster.tap_gui.githubIntegration.enabled:
+    integrations:
+      github:
+      - host: #@ data.values.clusters.view_cluster.tap_gui.githubIntegration.server_fqdn
+        token: #@ data.values.clusters.view_cluster.tap_gui.githubIntegration.personal_access_token
+    #@ end
     #@ if data.values.clusters.view_cluster.tap_gui.authSettings:
     auth: #@ data.values.clusters.view_cluster.tap_gui.authSettings
     #@ end
@@ -97,6 +104,13 @@ tap_gui:
             skipTLSVerify: true
             serviceAccountToken: #@ data.values.clusters.prod_cluster.k8s_info.saToken
           #@ end
+          #@ if data.values.clusters.iterate_cluster.enabled:
+          - url: #@ data.values.clusters.iterate_cluster.k8s_info.url
+            name: #@ data.values.clusters.iterate_cluster.k8s_info.name
+            authProvider: serviceAccount
+            skipTLSVerify: true
+            serviceAccountToken: #@ data.values.clusters.iterate_cluster.k8s_info.saToken
+          #@ end
 
 metadata_store:
   app_service_type: ClusterIP
@@ -114,7 +128,7 @@ appliveview:
 
 shared:
   ingress_domain: #@ data.values.clusters.view_cluster.ingressDomain
-  ca_cert_data: #@ data.values.tls.certData
+  ca_cert_data: #@ base64.decode(data.values.tls.certData)
 
 package_overlays:
 - name: tap-gui

@@ -1,0 +1,11 @@
+values.yaml
+values.yaml.original
+wildcard.cer
+wildcard.key
+tkg-kubeconfigs/
+tkg-cluster-configs/
+tap-cluster-configs/
+dev-ns-prep-files/git-secret.yaml
+dev-ns-prep-files/maven-secret.yaml
+helper-files/
+package-overlays/tap-telemetry-overlay.yaml

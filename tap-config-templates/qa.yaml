@@ -1,4 +1,5 @@
 #@ load("@ytt:data","data")
+#@ load("@ytt:base64","base64")
 ---
 #@ if data.values.clusters.qa_cluster.enabled:
 profile: run
@@ -22,10 +23,10 @@ appliveview_connector:
 #@ end
 shared:
   ingress_domain: #@ data.values.clusters.qa_cluster.ingressDomain
-  ca_cert_data: #@ data.values.tls.certData
-#@ end
+  ca_cert_data: #@ base64.decode(data.values.tls.certData)
 
 package_overlays:
 - name: cnrs
   secrets:
   - name: cnrs-overlay
+#@ end

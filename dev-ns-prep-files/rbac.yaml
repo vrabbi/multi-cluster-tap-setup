@@ -15,6 +15,7 @@ metadata:
   name: default
 secrets:
   - name: registry-credentials
+  - name: tap-registry
 imagePullSecrets:
   - name: registry-credentials
   - name: tap-registry

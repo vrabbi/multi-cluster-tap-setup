@@ -2,6 +2,7 @@
 ---
 gitops:
   enabled: false #! if you want to enable a Gitops flow
+  server_fqdn: github.com #! supports github, github enterprise, gitlab, gitlab CE, and bit bucket.
   branch: main #! The Gitops branch to open PRs against automatically from the build cluster
   repository_name: #! git repo name
   repository_owner: #! Owner Name of the repo
@@ -16,9 +17,9 @@ maven:
     password: #! Password to be used for basic auth against the Maven Repo
 tls:
   generate: false #! If you want to have self signed cert generated set to true
-  certData: #!  Cert data for wildcard cert that covers all clusters ingress domains
-  keyData: #! Key data for wildcard cert that covers all clusters ingress domains
-version: 1.1.1
+  certData: #!  Base64 Encoded Cert data for wildcard cert that covers all clusters ingress domains
+  keyData: #! Base64 Encoded Key data for wildcard cert that covers all clusters ingress domains
+version: 1.2.0
 tanzunet:
   user: #! email for Tanzu Netwrok
   password: #! Tanzu Network Password
@@ -47,32 +48,38 @@ tkg:
 supply_chain: testing_scanning #! Currently only testing_scanning is supported
 clusters:
   view_cluster:
-    enabled: true #! Currently must be true
+    enabled: true #! must be true
     ingressDomain: tap.example.com #! Set to the ingress Domain for View Cluster components
     k8s_info:
       name: demo-view #! name of the TKG cluster to create
     tap_gui:
+      githubIntegration:
+        enabled: false
+        server_url: github.com
+        personal_access_token: ""
       catalogUrl: https://github.com/vrabbi/tap-gui-beta-3/blob/master/yelb-catalog/catalog-info.yaml
       authSettings: {} #! when empty only Guest auth is enabled. can be changed later
   build_cluster:
-    enabled: true #! Currently must be true
+    enabled: true
     k8s_info:
       name: demo-build #! name of the TKG cluster to create
-    buildService:
-      descriptor: full
-      dependency_updater: true #! Currently must be true
   dev_cluster:
-    enabled: true #! Currently must be true
-    ingressDomain: dev.vrabbi.cloud  #! Set to the ingress Domain for dev ingress objects
+    enabled: true
+    ingressDomain: dev.example.com  #! Set to the ingress Domain for dev ingress objects
     k8s_info:
       name: demo-dev #! name of the TKG cluster to create
   qa_cluster:
-    enabled: true #! Currently must be true
+    enabled: true
     ingressDomain: qa.example.com  #! Set to the ingress Domain for qa ingress objects
     k8s_info:
       name: demo-qa #! name of the TKG cluster to create
   prod_cluster:
-    enabled: true #! Currently must be true
+    enabled: true
     ingressDomain: prod.example.com #! Set to the ingress Domain for prod ingress objects
     k8s_info:
       name: demo-prod #! name of the TKG cluster to create
+  iterate_cluster:
+    enabled: true
+    ingressDomain: prod.example.com #! Set to the ingress Domain for iterate ingress objects
+    k8s_info:
+      name: demo-iterate

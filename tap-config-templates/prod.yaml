@@ -1,4 +1,5 @@
 #@ load("@ytt:data","data")
+#@ load("@ytt:base64","base64")
 ---
 #@ if data.values.clusters.prod_cluster.enabled:
 profile: run
@@ -22,7 +23,7 @@ appliveview_connector:
 #@ end
 shared:
   ingress_domain: #@ data.values.clusters.prod_cluster.ingressDomain
-  ca_cert_data: #@ data.values.tls.certData
+  ca_cert_data: #@ base64.decode(data.values.tls.certData)
 #@ end
 
 package_overlays:

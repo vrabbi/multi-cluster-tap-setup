@@ -1,0 +1,54 @@
+#@ load("@ytt:data","data")
+#@ load("@ytt:base64","base64")
+---
+profile: iterate
+ceip_policy_disclosed: true
+buildservice:
+  kp_default_repository: #@ "{}/{}/build-service".format(data.values.harbor.fqdn, data.values.harbor.system_project)
+  kp_default_repository_username: #@ data.values.harbor.user
+  kp_default_repository_password: #@ data.values.harbor.password
+  exclude_dependencies: true
+
+shared:
+  ingress_domain: #@ data.values.clusters.iterate_cluster.ingressDomain
+  ca_cert_data: #@ base64.decode(data.values.tls.certData)
+
+cnrs:
+  domain_name: #@ data.values.clusters.iterate_cluster.ingressDomain
+  domain_template: "{{.Name}}-{{.Namespace}}.{{.Domain}}"
+  default_tls_secret: "kube-system/wildcard"
+
+contour:
+  envoy:
+    service:
+      type: #@ data.values.contour.serviceType
+
+#@ if data.values.clusters.view_cluster.enabled:
+appliveview_connector:
+  backend:
+    sslDisabled: "true"
+    host: #@ "appliveview.{}".format(data.values.clusters.view_cluster.ingressDomain)
+#@ end
+
+supply_chain: basic
+
+ootb_supply_chain_basic:
+  registry:
+    server: #@ data.values.harbor.fqdn
+    repository: #@ data.values.harbor.system_project
+  gitops:
+    ssh_secret: ""
+  #@ if data.values.maven.enabled:
+  maven:
+    repository:
+      url: #@ data.values.maven.repository_url
+      secret_name: maven-auth
+  #@ end
+
+package_overlays:
+- name: ootb-templates
+  secrets:
+  - name: pr-flow-overlay
+- name: cnrs
+  secrets:
+  - name: cnrs-overlay

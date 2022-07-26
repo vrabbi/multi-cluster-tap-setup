@@ -1,4 +1,5 @@
 #@ load("@ytt:data","data")
+#@ load("@ytt:base64","base64")
 ---
 profile: build
 ceip_policy_disclosed: true
@@ -6,11 +7,11 @@ buildservice:
   kp_default_repository: #@ "{}/{}/build-service".format(data.values.harbor.fqdn, data.values.harbor.system_project)
   kp_default_repository_username: #@ data.values.harbor.user
   kp_default_repository_password: #@ data.values.harbor.password
-  tanzunet_username: #@ data.values.tanzunet.user
-  tanzunet_password: #@ data.values.tanzunet.password
-  descriptor_name: #@ data.values.clusters.build_cluster.buildService.descriptor
-  enable_automatic_dependency_updates: #@ data.values.clusters.build_cluster.buildService.dependency_updater
+  exclude_dependencies: true
 supply_chain: testing_scanning
+
+shared:
+  ca_cert_data: #@ base64.decode(data.values.tls.certData)
 
 scanning:
   metadataStore:
@@ -39,10 +40,10 @@ ootb_supply_chain_testing_scanning:
   #@ if data.values.maven.enabled:
   maven:
     repository:
-      url: #@ data.values.maven.repoistory_url
+      url: #@ data.values.maven.repository_url
       secret_name: maven-auth
   #@ end
-    
+
 grype:
   targetImagePullSecret: "tap-registry"
   metadataStore:
