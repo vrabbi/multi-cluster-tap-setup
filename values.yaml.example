@@ -17,8 +17,13 @@ maven:
     password: #! Password to be used for basic auth against the Maven Repo
 tls:
   generate: false #! If you want to have self signed cert generated set to true
+<<<<<<< HEAD
   certData: #!  Base64 Encoded Cert data for wildcard cert that covers all clusters ingress domains
   keyData: #! Base64 Encoded Key data for wildcard cert that covers all clusters ingress domains
+=======
+  certData: #!  Cert data for wildcard cert that covers all clusters ingress domains
+  keyData: #! Key data for wildcard cert that covers all clusters ingress domains
+>>>>>>> 37b75651be5d5b06c5466df1b7359f48cda25795
 version: 1.2.0
 tanzunet:
   user: #! email for Tanzu Netwrok
